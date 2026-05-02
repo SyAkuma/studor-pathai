@@ -32,7 +32,7 @@ studor-pathai/
 │   ├── task3_executed.ipynb  Pre-executed with all outputs
 │   ├── OUTPUTS/            recommendations.csv, evaluation_summary.csv
 │   └── PLOTS/              8 diagnostic plots
-├── docs/                   Report, video script, understanding guide
+├── docs/                   Report
 ├── requirements.txt
 └── README.md
 ```
