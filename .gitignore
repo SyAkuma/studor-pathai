@@ -22,10 +22,8 @@ assessments.csv
 vle.csv
 courses.csv
 
-# Generated output CSVs — reproduce by running notebooks in order
+# Large generated output — 83MB, too big for git; reproduce by running task1 notebook
 task1/OUTPUTS/weekly_scores_v2.csv
-task1/OUTPUTS/student_archetypes_v2.csv
-task2/OUTPUTS/student_alerts_v2.csv
 
 # Jupyter
 .ipynb_checkpoints/
