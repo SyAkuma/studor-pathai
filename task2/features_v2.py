@@ -36,7 +36,7 @@ def _slope(series):
 
 def load_data(data_dir=".."):
     print("Loading CSVs...")
-    weekly_scores = pd.read_csv(f"{data_dir}/Task1v2/OUTPUTS/weekly_scores_v2.csv")
+    weekly_scores = pd.read_csv(f"{data_dir}/task1/OUTPUTS/weekly_scores_v2.csv")
     st_info       = pd.read_csv(f"{data_dir}/studentInfo.csv")
     st_reg        = pd.read_csv(f"{data_dir}/studentRegistration.csv")
     st_ass        = pd.read_csv(f"{data_dir}/studentAssessment.csv")

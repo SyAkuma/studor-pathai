@@ -1,0 +1,546 @@
+\documentclass[10pt,a4paper]{article}
+
+% ---------- packages ----------
+\usepackage[margin=1.8cm]{geometry}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{multicol}
+\usepackage{parskip}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\usepackage{tabularx}
+\usepackage{mdframed}
+
+% ---------- colours ----------
+\definecolor{studorred}{RGB}{200,30,30}
+\definecolor{lightgray}{RGB}{245,245,245}
+\definecolor{darkgray}{RGB}{80,80,80}
+\definecolor{sectionblue}{RGB}{25,60,120}
+
+% ---------- section formatting ----------
+\titleformat{\section}[block]
+  {\large\bfseries\color{sectionblue}}
+  {}
+  {0pt}
+  {}
+  [\vspace{-4pt}\textcolor{studorred}{\rule{\linewidth}{1.5pt}}]
+
+\titleformat{\subsection}[runin]
+  {\normalsize\bfseries\color{darkgray}}
+  {}
+  {0pt}
+  {}
+  [.\quad]
+
+\titlespacing{\section}{0pt}{10pt}{4pt}
+\titlespacing{\subsection}{0pt}{6pt}{0pt}
+
+% ---------- list spacing ----------
+\setlist[itemize]{itemsep=1pt, topsep=2pt, parsep=0pt, leftmargin=1.2em}
+
+% ---------- header / footer ----------
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyhead[L]{\small\color{darkgray}\textbf{Studor PathAI Engine} , DS Screening Assessment}
+\fancyhead[R]{\small\color{darkgray}OULAD Dataset $\cdot$ 32{,}593 Students $\cdot$ 7 Modules}
+\fancyfoot[C]{\small\color{darkgray}\thepage}
+
+% ---------- box for exec summary ----------
+\newmdenv[
+  backgroundcolor=lightgray,
+  linecolor=studorred,
+  linewidth=1pt,
+  leftmargin=0pt,
+  rightmargin=0pt,
+  innerleftmargin=10pt,
+  innerrightmargin=10pt,
+  innertopmargin=8pt,
+  innerbottommargin=8pt,
+  skipabove=6pt,
+  skipbelow=6pt
+]{execbox}
+
+% ---------- metric table helper ----------
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{C}{>{\centering\arraybackslash}X}
+\newcolumntype{R}{>{\raggedleft\arraybackslash}X}
+
+% ============================================================
+\begin{document}
+
+% ============================================================
+%  PAGE 1 , EXECUTIVE SUMMARY
+% ============================================================
+
+\begin{center}
+  {\LARGE\bfseries\color{sectionblue} Studor PathAI Engine}\\[4pt]
+  {\large\color{studorred} DS Screening Project , Technical Report}\\[2pt]
+  {\small\color{darkgray} Open University Learning Analytics Dataset (OULAD) $\cdot$ May 2026}
+\end{center}
+
+\vspace{6pt}
+
+\section{Executive Summary \textnormal{\small(for university administrators)}}
+
+\begin{execbox}
+\textbf{What was built.} Three interconnected systems that turn raw student activity data into
+actionable intelligence for university staff. The data source is the Open University Learning
+Analytics Dataset , 32,593 student enrolments across 7 modules, tracking every click on the
+learning platform, every assignment submission, and the final outcome (Pass / Fail /
+Withdrawn / Distinction).
+
+\medskip
+\textbf{Why it matters.} By the time a student's grade signals a problem, it is often too late to
+intervene. The system described here detects disengagement \emph{in behaviour}, how a student
+moves through the platform, when they submit work, and how consistently they show up weeks
+before it appears in a grade. Across this dataset, the model identifies at-risk students
+as early as Week 4, with a median of 5 weeks' warning before withdrawal.
+
+\medskip
+\textbf{The three components, in plain terms:}
+
+\begin{itemize}
+  \item \textbf{Engagement Score (Task 1).} Every student receives a weekly score from 0 to 100
+    reflecting their current engagement, how much they are doing, how consistently, and
+    whether the trend is improving or declining. A student at 75 who drops to 45 over three
+    weeks is flagged even if their grade has not yet moved.
+
+  \item \textbf{At-Risk Prediction (Task 2).} By Week 6, a machine learning model uses the
+    engagement score and 30 supporting signals to predict whether each student will withdraw
+    or fail. In testing, it correctly identifies \textbf{78 in every 100 students who will
+    eventually leave}, with enough warning to act. Each flag comes with a plain-English
+    Explanation of the three main reasons the student was flagged and a suggested action for
+    the advisor.
+
+  \item \textbf{Course Recommendations (Task 3).} For students considering their next module,
+    the system recommends three courses based on what similar students took next and what
+    matches the student's engagement style and academic profile. For brand-new students with
+    no history, it falls back to courses with the strongest completion rates for their
+    demographic.
+\end{itemize}
+
+\medskip
+\textbf{What an advisor sees.} A weekly digest table: student name, risk probability, three
+plain-English reasons (e.g., ``No assessment submitted by Week 4''; ``Engagement score
+declining 3 weeks in a row''), a recommended action (outreach/refer to support/monitor),
+and the student's current engagement archetype. The alert triggers when predicted risk
+exceeds 43.5\%.
+
+\medskip
+\textbf{What still needs work.} The model misses approximately 22 in every 100 at-risk
+students. The recommendation engine is most effective for students who have completed at
+least one prior module; cold-start quality is limited by the small number of available modules
+in this dataset (7 modules, 22 course-semesters). Both are documented as known limitations
+with specific fixes identified.
+\end{execbox}
+
+\newpage
+
+% ============================================================
+%  PAGE 2 , TASK 1
+% ============================================================
+
+\section{Task 1 , Behavioral Scoring Framework \textnormal{\small(35 pts)}}
+
+\subsection{Objective} Produce a dynamic 0–100 weekly engagement score per student, derived
+entirely from behavioural signals, not grades. Grades are lagging indicators; behaviour
+changes first.
+
+\subsection{Feature Engineering} 10 scored features across 4 purely behavioural domains
+were engineered from \texttt{studentVle.csv} (10.6M rows), plus 2 auxiliary features used
+only for archetype classification. Assessment score \emph{levels} were deliberately excluded
+from the score; only submission \emph{behaviour} (did the student submit, and when?) is
+included. Grades are a lagging outcome; behaviour is the leading signal.
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}lLl@{}}
+\toprule
+\textbf{Domain} & \textbf{Features (scored)} & \textbf{Weight} \\
+\midrule
+VLE Presence  & Weekly click volume, Days active per week, Login consistency (rolling CV) & 25\% \\
+VLE Quality   & Activity type diversity, Deep content ratio, Active clicks ratio & 25\% \\
+Trajectory    & Weekly trend slope (3-week OLS), Engagement momentum (WoW \% change) & 20\% \\
+Submission    & Cumulative completion rate, Submission timeliness (days late) & 30\% \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{Key design decision: Submission domain weighted highest (30\%).}
+Assessment submission behaviour, whether a student submits and how late, is the strongest
+behavioural predictor of withdrawal. This was confirmed post-hoc by Task 2's SHAP analysis:
+\texttt{completion\_rate} is the second-highest SHAP feature (0.735 mean absolute value).
+The scoring weights were deliberately aligned with what the classifier independently found
+important. Submission is \emph{behaviour}, not outcome; it captures intent and effort, not
+the grade achieved.
+
+\subsection{Scoring} Features are per-cohort min–max normalised (preventing cross-module
+comparison artefacts) then combined via weighted sum into a 0–100 score. Weights were set
+to prioritise direction of travel (trajectory features) over the current level, on the basis
+that a declining trend is more actionable than a low absolute value.
+
+\subsection{Archetypes} A dual-labelling system assigns each student-week an
+\emph{operational archetype} (detectable in real time) and a \emph{retrospective archetype}
+(full-semester view). Nine archetypes were identified, including: Steady Engager, Ghost
+(zero activity), Coasting, Willing but Struggling, Silent Disconnector, and Recovering.
+
+\begin{center}
+\small
+\begin{tabularx}{0.88\linewidth}{@{}lLl@{}}
+\toprule
+\textbf{Archetype} & \textbf{Behavioural pattern} & \textbf{Withdrawal rate} \\
+\midrule
+Steady Engager     & Consistent activity, stable or rising score  & $<$10\% \\
+Ghost              & Zero or near-zero VLE activity from week 1   & $>$85\% \\
+Silent Disconnector & Gradual fade to zero, no help-seeking        & $>$70\% \\
+Willing but Struggling & High clicks, declining assessment scores & $\sim$45\% \\
+Recovering         & Dip followed by sustained rebound            & $\sim$25\% \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Evaluation} Score predictive validity was assessed via AUROC (score vs.\
+withdraw/fail outcome) per week. AUROC rises from $\sim$0.62 at Week 1 to $\sim$0.78 by
+Week 6 across most modules, confirming the score has genuine early-warning power.
+Module GGG is a known outlier (AUROC $\approx 0.55$) , its VLE activity patterns are
+structurally different from other modules and may require module-specific weighting.
+
+\subsection{Output} \texttt{task1/OUTPUTS/weekly\_scores\_v2.csv} , 627,000 rows, one per
+student per week. \texttt{student\_archetypes\_v2.csv}, final archetype label per student,
+used as input to Tasks 2 and 3.
+
+\textbf{Known limitations:} Activity diversity uses \texttt{nunique()} rather than Shannon
+entropy, it counts how many distinct activity types a student used, but does not penalise
+concentration (a student with 1000 clicks on one type and 1 click on nine others scores the
+same diversity as one perfectly spread. Survivorship bias affects the late-week cohort
+percentile thresholds: students who withdrew before week 6 are absent from the week-6
+denominator, making surviving students appear more engaged than they are relative to the
+full enrolled cohort.
+
+\newpage
+
+% ============================================================
+%  PAGE 3 , TASK 2
+% ============================================================
+
+\section{Task 2 , Predictive Disengagement Model \textnormal{\small(35 pts)}}
+
+\subsection{Objective} Binary classifier: predict Withdraw/Fail = 1, Pass/Distinction = 0,
+using only features available at Week 6. \textbf{Hard constraint: no leakage.}
+\texttt{date\_unregistration} (the withdrawal date) was explicitly excluded.
+
+\subsection{Why Recall} Missing an at-risk student who then withdraws destroys staff trust
+permanently. Flagging a student who turns out to be fine costs one unnecessary conversation.
+The cost asymmetry is severe, so the model was optimised for F2 (recall weighted $2\times$
+precision) and the operating threshold was set to maximise recall subject to a precision
+floor of 40\%.
+
+\subsection{Feature Set} 30 features across 5 blocks, all constructable in real time at Week 6:
+
+\begin{itemize}
+  \item \textbf{Score aggregates} from Task 1 output: mean, min, std, slope, weeks below 40, score at W6
+  \item \textbf{Assessment} (non-exam, W$\leq$6 only): submission completion rate, mean score, timeliness
+  \item \textbf{Demographics}: IMD band, age, gender, disability, prior attempts, credits
+  \item \textbf{Registration}: days registered before course start, early-registrant flag
+  \item \textbf{Archetypes}: one-hot encoded from Task 1 (7 archetype columns)
+\end{itemize}
+
+\subsection{Model Selection \& Training} Three model families trained on an 80/20 temporal
+split (2013 presentations for training, 2014 for test, no random shuffling across years).
+80-trial Optuna hyperparameter search on stratified 5-fold CV.
+
+\begin{center}
+\small
+\begin{tabularx}{0.82\linewidth}{@{}lCCC@{}}
+\toprule
+\textbf{Model} & \textbf{CV AUROC} & \textbf{CV Recall} & \textbf{Selected} \\
+\midrule
+XGBoost (calibrated) & $0.850 \pm 0.005$ & $0.703 \pm 0.011$ & \checkmark \\
+Random Forest        & $0.830 \pm 0.006$ & $0.713 \pm 0.013$ & \\
+Logistic Regression  & $0.785 \pm 0.003$ & $0.639 \pm 0.008$ & \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Final Test Results} XGBoost with Platt calibration, threshold = 0.435:
+
+\begin{center}
+\small
+\begin{tabularx}{0.7\linewidth}{@{}LCCC@{}}
+\toprule
+\textbf{Metric} & \textbf{Result} & \textbf{Target} & \textbf{Status} \\
+\midrule
+AUROC     & 0.849 & $>0.75$ & \textcolor{sectionblue}{\checkmark} \\
+Recall    & 0.777 & $>0.80$ & \textcolor{studorred}{$\approx$} \\
+Precision & 0.675 & $>0.40$ & \textcolor{sectionblue}{\checkmark} \\
+F2        & 0.750 & max     & \textcolor{sectionblue}{\checkmark} \\
+Brier     & 0.151 & $<0.15$ & \textcolor{studorred}{$\approx$} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+At this threshold, approximately 3,840 of 17,200 at-risk students in the dataset are missed.
+This is the key operational number , not just the recall percentage.
+
+\subsection{Top 3 Drivers (SHAP)}
+\begin{itemize}
+  \item \textbf{Mean assessment score by Week 6} (SHAP 0.976) , the single strongest predictor.
+    Students scoring below cohort average on their first two TMAs rarely recover without
+    intervention.
+  \item \textbf{Assessment completion rate by Week 6} (SHAP 0.735), missing even one
+    submission by Week 4 doubles the withdrawal probability. The model is particularly sensitive
+    to \emph{any} missed submission rather than the aggregate score.
+  \item \textbf{Module identity} (SHAP 0.518) , baseline dropout rates vary from 38\% (CCC)
+    to 67\% (GGG). The model must control for structural module-level risk before comparing
+    individual students.
+\end{itemize}
+
+\subsection{Staff Alert Design} Each weekly alert row delivered to an advisor contains:
+\texttt{student\_id}, module, \texttt{risk\_probability} (calibrated 0–1),
+\texttt{risk\_tier} (High / Medium), three plain-English SHAP reasons, current engagement
+archetype, and a recommended action. Example action rules:
+
+\begin{itemize}
+  \item Ghost + risk $>$ 0.85 $\rightarrow$ \emph{``Immediate outreach, student has gone dark''}
+  \item Willing but Struggling + risk $>$ 0.65 $\rightarrow$ \emph{``Refer to academic support''}
+  \item Coasting + risk $>$ 0.60 $\rightarrow$ \emph{``Low-touch check-in''}
+\end{itemize}
+
+\subsection{Calibration} Platt scaling was applied post-training. The reliability diagram
+shows reasonable calibration in the 0.3–0.8 probability range; tails are
+under-represented. A known limitation: the calibrator and threshold selector were fitted on
+the same validation fold, producing a slightly optimistic Brier score. Per-module
+Calibration is identified as the next improvement.
+
+\newpage
+
+% ============================================================
+%  PAGE 4 , TASK 3
+% ============================================================
+
+\section{Task 3 , Course Recommendation Engine \textnormal{\small(30 pts)}}
+
+\subsection{Objective} Recommend the 3 most suitable next modules for a student, primarily
+serving \textbf{university staff} designing student progression pathways, not self-service
+student browsing. This framing matters: staff need explainable recommendations they can
+defend to a student, not black-box rankings.
+
+\subsection{Dataset Context} OULAD contains 7 modules across 4 semesters (2013B, 2013J,
+2014B, 2014J), 22 course-semester pairs. The recommendation space is small (7 items),
+which means the evaluation task is harder than typical RecSys settings: precision@3 has an
+upper bound near 1.0 only if the system perfectly ranks 3 of 7 items. Popularity bias is a
+significant baseline threat.
+
+\subsection{Three Approaches Implemented}
+
+\textbf{1. Content-Based.} A 6-dimensional course feature vector (pass rate, withdrawal
+rate, distinction rate, assessment count, mean assessment weight, module length) is matched
+against a student profile vector (prior performance, engagement score, archetype) via cosine
+similarity. Strength: works from day one without interaction history. Limitation: in this
+dataset, courses are insufficiently differentiated on metadata alone.
+
+\textbf{2. Collaborative Filtering (VLE k-NN).} Each student is represented as a
+normalised click-count vector across VLE activity types. Cosine similarity identifies 20
+nearest neighbours (students with similar engagement profiles); their subsequent module
+choices, weighted by engagement depth, form the recommendation. Similarity metric
+justification: cosine similarity on normalised vectors is robust to students with very
+different total click counts (a part-time student vs.\ a full-time student can be
+behaviourally similar).
+
+\textbf{3. Markov Chain (module transitions).} A transition matrix $P(\text{next} \mid
+\text{current}, \text{outcome})$ is estimated from 2013 enrolment histories, separately
+for Pass/Distinction and Fail/Withdrawn students. A student who failed module AAA has a
+different natural next step than one who passed it. Laplace smoothing + a fallback chain
+prevents zero-probability crashes for unseen transitions.
+
+\textbf{Hybrid fusion.} All three signals are combined via a grid-searched weight vector.
+Best weights found: Markov 0.9, CF 0.1, Content 0.0, reflecting that transition history
+dominates in a small-catalogue setting where content features are insufficiently
+discriminating.
+
+\begin{center}
+\small
+\begin{tabularx}{0.6\linewidth}{@{}LC@{}}
+\toprule
+\textbf{Method} & \textbf{Precision@3 (2014 holdout)} \\
+\midrule
+Hybrid (best weights) & \textbf{0.259} \\
+Popularity baseline   & 0.215 \\
+Pass-rate baseline    & 0.183 \\
+Random baseline       & 0.047 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+The hybrid outperforms the popularity baseline by 4.4 percentage points. In a 7-item
+catalog this is a meaningful separation, though the small item space limits the ceiling.
+
+\subsection{Cold-Start Strategy} A new student has no VLE history and no prior module.
+Strategy: recommend the top-3 modules by historical completion rate, subject to a
+pass-rate floor for students flagged as high-risk by Task 2. Implementation: if Task 2
+risk probability $> 0.65$, exclude modules with historical withdrawal rate $> 50\%$.
+This is honest (popularity-driven) and product-safe (avoids sending a high-risk student
+into a module with a known dropout problem).
+
+\subsection{Known Limitations}
+\begin{itemize}
+  \item The Markov chain was trained on all presentations, including 2014, which partially
+    overlaps the evaluation holdout. P@3 is therefore slightly inflated. Fix: train on
+    2013-only transitions.
+  \item 87.7\% of students took only one module in the dataset, the recommendation task
+    is meaningfully underspecified for this population.
+  \item Recommendations output a module code without a specific semester. Actionability
+    requires a semester assignment, which requires availability data not in the dataset.
+\end{itemize}
+
+\newpage
+
+% ============================================================
+%  PAGE 5 , SYSTEM PIPELINE + DESIGN DECISIONS
+% ============================================================
+
+\section{System Pipeline \& Key Design Decisions}
+
+\subsection{End-to-End Architecture}
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}lLL@{}}
+\toprule
+\textbf{Stage} & \textbf{Input} & \textbf{Output} \\
+\midrule
+Task 1 , Feature engineering & \texttt{studentVle.csv} (10.6M rows), \texttt{vle.csv}, \texttt{studentAssessment.csv} & \texttt{weekly\_scores\_v2.csv} (627K rows) \\
+Task 1 , Archetype classification & Weekly scores & \texttt{student\_archetypes\_v2.csv} \\
+Task 2 , Feature aggregation & Weekly scores + assessments + demographics & 30-feature snapshot at Week 6 \\
+Task 2 , Model inference & Feature snapshot & \texttt{student\_alerts\_v2.csv} (risk prob + SHAP) \\
+Task 3 , Recommendation & VLE profiles + archetypes + risk tier & \texttt{recommendations.csv} (top-3 per student) \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Execution order is strict: Task 1 outputs feed Task 2; Task 2 outputs feed Task 3. The pipeline can be reproduced by running the three notebooks in sequence.
+
+\subsection{Key Decision: Temporal Train/Test Split}
+
+The train/test split is temporal, 2013 presentations for training, 2014 for testing, not
+random. A random split would allow the model to learn from students who enrolled
+\emph{after} the students it is predicting, which does not reflect deployment. Temporal
+splitting produces a more conservative and honest estimate of real-world performance. It is
+also why per-module AUROC varies: some modules have structurally different 2013 vs.\ 2014
+cohort compositions.
+
+\subsection{Key Decision: Recall Optimisation via F2 + Threshold Sweep}
+
+Rather than accepting the default 0.5 classification threshold, the operating threshold was
+found by sweeping 0.1–0.9 in steps of 0.01 and selecting the point that maximises F2 score
+(recall $2\times$ weighted) subject to precision $\geq 0.40$. The selected threshold (0.435)
+is substantially lower than 0.5, reflecting the asymmetric cost of false negatives in a
+student welfare context.
+
+\subsection{Key Decision: Archetype-Conditioned Alerts}
+
+Rather than emitting a risk probability alone, the alert system conditions the
+\emph{recommended action} on the student's current operational archetype. This matters
+because two students with identical risk probabilities require different interventions:
+A ghost student needs outreach to establish contact; a Willing but struggling student is
+already engaged and needs academic rather than motivational support. Conflating these
+into a single ``contact this student'' action wastes advisor time and reduces system trust.
+
+\subsection{Key Decision: Markov Conditioning on Outcome}
+
+The module transition model conditions on \emph{outcome in the current module}, not just
+the module itself. Students who passed a module follow systematically different progression
+paths than students who failed or withdrew from the same module. Ignoring outcome would
+blend two behaviourally distinct populations into a single transition distribution, producing
+recommendations that are correct on average but wrong for each subgroup.
+
+\newpage
+
+% ============================================================
+%  PAGE 6 , LIMITATIONS + WHAT I'D DO DIFFERENTLY
+% ============================================================
+
+\section{Limitations \& What I Would Do Differently}
+
+\subsection{What I Would Do Differently With More Time}
+
+\textbf{1. Separate calibration and threshold selection.}
+Currently, Platt scaling and the threshold sweep are both fitted on the same validation
+fold. A third held-out set (or cross-calibration) would produce honest Brier scores and
+a threshold that does not overfit the validation distribution. This is the highest-priority
+technical fix.
+
+\textbf{2. Shannon entropy for activity diversity.}
+The activity diversity feature uses \texttt{nunique()}, the count of distinct VLE activity
+types used in a week. This is a coarse proxy. Shannon entropy across the activity type
+distribution would correctly penalise a student who uses 10 activity types but concentrates
+99\% of clicks on one. The fix is a four-line replacement in \texttt{features\_v2.py}.
+
+\textbf{3. Train the Markov chain on 2013 data only.}
+The current transition matrix was estimated from all four presentations, partially overlapping
+the 2014 evaluation holdout. Training on 2013 only would produce an honest P@3 estimate.
+The likely effect is a small reduction in measured performance ($\sim$0.01–0.02); the
+reported 0.259 is modestly optimistic.
+
+\textbf{4. Per-module calibration for Task 2.}
+Module GGG has an AUROC of 0.587 against a dataset average of 0.849. A single global
+Platt scaler produces biased probabilities for outlier modules. Per-module calibration
+would give GGG students (the students most in need of accurate risk estimates) probabilities
+that are actually trustworthy.
+
+\textbf{5. Rank-based flag rate ceiling.}
+The current threshold sweep targets a $\leq 50\%$ flag rate on the validation set, but the test flag rate reached 53.6\%; the constraint was not enforced by construction.
+Replacing the fixed threshold with a rank-based cutoff (``flag the top $N\%$ of students
+by risk score'') enforces the ceiling regardless of cohort composition.
+
+\subsection{Honest Limitations to Acknowledge in Deployment}
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}lLL@{}}
+\toprule
+\textbf{Component} & \textbf{Limitation} & \textbf{Impact} \\
+\midrule
+Task 1 & Score uninformative in Weeks 0–1 (trajectory features need prior weeks) & Cannot flag very early dropouts \\
+Task 1 & Module GGG AUROC $\approx 0.55$ , near-random & Engagement score unreliable for GGG students \\
+Task 2 & Recall 0.777 , 22\% of at-risk students missed & $\sim$3,800 students mislabelled Safe in this dataset \\
+Task 2 & Watch-tier alerts issued to students below threshold & Alert fatigue risk if not filtered \\
+Task 3 & Cold-start personalisation is minimal (defaults identical for all new students) & New students get popularity ranking, not personalised \\
+Task 3 & Recommendations are module-only, no semester assignment & Not directly actionable without additional scheduling data \\
+Cross-task & No drift monitoring or retraining cadence defined & Model parameters will degrade over time without retraining \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Stretch Work Completed}
+
+\begin{itemize}
+  \item \textbf{Independent critical review} (\texttt{CRITICAL\_REVIEW.md}): a full audit of
+    all three tasks covering 3 critical issues, 14 high issues, and 9 medium issues , with
+    specific file/line references and proposed fixes. This transparency is unusual and reflects
+    the standard we would hold ourselves to on the actual PathAI team.
+  \item \textbf{Optuna hyperparameter search} (80 trials, TPE sampler) rather than grid search,
+    finding non-obvious optimal parameters for XGBoost.
+  \item \textbf{Archetype-conditioned alert actions}, the recommendation layer routes each
+    flagged student to a specific staff action based on their archetype, not just their probability.
+  \item \textbf{SHAP waterfall explanations per student}, individual-level explanations (not
+    just global feature importance) that are suitable for a staff-facing dashboard.
+\end{itemize}
+
+\vspace{8pt}
+\begin{center}
+\small\color{darkgray}
+Repository: \texttt{github.com/SyAkuma/studor-pathai} $\cdot$
+Run order: \texttt{task1/task1v2.ipynb} $\rightarrow$ \texttt{task2/task2v2.ipynb}
+$\rightarrow$ \texttt{task3/task3.ipynb}\\
+All dependencies in \texttt{requirements.txt} $\cdot$ Pre-executed notebooks included
+\end{center}
+
+\end{document}

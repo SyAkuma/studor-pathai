@@ -61,8 +61,8 @@ def load_raw(data_dir=DATA_DIR):
     ass      = pd.read_csv(f"{data_dir}/assessments.csv")
     st_ass   = pd.read_csv(f"{data_dir}/studentAssessment.csv")
     courses  = pd.read_csv(f"{data_dir}/courses.csv")
-    arch     = pd.read_csv(f"{data_dir}/Task1v2/OUTPUTS/student_archetypes_v2.csv")
-    alerts   = pd.read_csv(f"{data_dir}/Task2v2/OUTPUTS/student_alerts_v2.csv")
+    arch     = pd.read_csv(f"{data_dir}/task1/OUTPUTS/student_archetypes_v2.csv")
+    alerts   = pd.read_csv(f"{data_dir}/task2/OUTPUTS/student_alerts_v2.csv")
     print("Done.")
     return si, vle_meta, ass, st_ass, courses, arch, alerts
 

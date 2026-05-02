@@ -1,5 +1,5 @@
 Method,Precision@3,Coverage,SuccessRate
-Hybrid,0.265,1.0,0.7897
+Hybrid,0.2705,1.0,0.8013
 Popularity,0.2145,0.5714,0.6359
 PassRate,0.0192,0.5714,0.0577
-Random,0.1667,1.0,0.5
+Random,0.1688,1.0,0.5026
